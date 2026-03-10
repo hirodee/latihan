@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'pages/login_page.dart';
+import 'translations.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,9 +11,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: LoginPage(),
+    // Membungkus dengan ValueListenableBuilder untuk re-render saat bahasa berubah
+    return ValueListenableBuilder<String>(
+      valueListenable: AppTranslations.currentLocale,
+      builder: (context, locale, child) {
+        return const MaterialApp(
+          debugShowCheckedModeBanner: false,
+          home: LoginPage(),
+        );
+      },
     );
   }
 }

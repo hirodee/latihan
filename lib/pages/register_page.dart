@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../database/sembast_db.dart';
+import '../translations.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -21,11 +22,10 @@ class _RegisterPageState extends State<RegisterPage> {
 
   void register() async {
     if (_formKey.currentState!.validate()) {
-      // Cek apakah password dan confirm password sama
       if (passwordController.text != confirmPasswordController.text) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Password dan konfirmasi password tidak sama'),
+            content: Text(AppTranslations.tr('reg_err_not_match')),
             backgroundColor: Colors.orange.shade700,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -48,7 +48,7 @@ class _RegisterPageState extends State<RegisterPage> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Register berhasil! Silakan login'),
+            content: Text(AppTranslations.tr('reg_success')),
             backgroundColor: Colors.green.shade700,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -63,7 +63,7 @@ class _RegisterPageState extends State<RegisterPage> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Username sudah terdaftar'),
+            content: Text(AppTranslations.tr('reg_err_exist')),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -124,9 +124,9 @@ class _RegisterPageState extends State<RegisterPage> {
                   const SizedBox(height: 30),
                   
                   // Title
-                  const Text(
-                    'Buat Akun Baru',
-                    style: TextStyle(
+                  Text(
+                    AppTranslations.tr('reg_title'),
+                    style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -134,7 +134,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Daftar untuk memulai',
+                    AppTranslations.tr('reg_subtitle'),
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.white.withOpacity(0.9),
@@ -164,8 +164,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           TextFormField(
                             controller: usernameController,
                             decoration: InputDecoration(
-                              labelText: 'Username',
-                              hintText: 'Masukkan username',
+                              labelText: AppTranslations.tr('username'),
                               prefixIcon: const Icon(Icons.person_outline),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -187,10 +186,10 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'Username tidak boleh kosong';
+                                return AppTranslations.tr('reg_err_empty_user');
                               }
                               if (value.length < 3) {
-                                return 'Username minimal 3 karakter';
+                                return AppTranslations.tr('reg_err_short_user');
                               }
                               return null;
                             },
@@ -202,8 +201,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             controller: passwordController,
                             obscureText: !_isPasswordVisible,
                             decoration: InputDecoration(
-                              labelText: 'Password',
-                              hintText: 'Masukkan password',
+                              labelText: AppTranslations.tr('password'),
                               prefixIcon: const Icon(Icons.lock_outline),
                               suffixIcon: IconButton(
                                 icon: Icon(
@@ -237,10 +235,10 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'Password tidak boleh kosong';
+                                return AppTranslations.tr('reg_err_empty_pass');
                               }
                               if (value.length < 6) {
-                                return 'Password minimal 6 karakter';
+                                return AppTranslations.tr('reg_err_short_pass');
                               }
                               return null;
                             },
@@ -252,8 +250,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             controller: confirmPasswordController,
                             obscureText: !_isConfirmPasswordVisible,
                             decoration: InputDecoration(
-                              labelText: 'Konfirmasi Password',
-                              hintText: 'Masukkan ulang password',
+                              labelText: AppTranslations.tr('confirm_pass'),
                               prefixIcon: const Icon(Icons.lock_outline),
                               suffixIcon: IconButton(
                                 icon: Icon(
@@ -287,7 +284,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'Konfirmasi password tidak boleh kosong';
+                                return AppTranslations.tr('reg_err_empty_conf');
                               }
                               return null;
                             },
@@ -317,9 +314,9 @@ class _RegisterPageState extends State<RegisterPage> {
                                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                       ),
                                     )
-                                  : const Text(
-                                      'Daftar',
-                                      style: TextStyle(
+                                  : Text(
+                                      AppTranslations.tr('reg_btn'),
+                                      style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -337,7 +334,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Sudah punya akun? ',
+                        AppTranslations.tr('has_account'),
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.9),
                           fontSize: 15,
@@ -349,9 +346,9 @@ class _RegisterPageState extends State<RegisterPage> {
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                         ),
-                        child: const Text(
-                          'Login',
-                          style: TextStyle(
+                        child: Text(
+                          AppTranslations.tr('login_link'),
+                          style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
                             decoration: TextDecoration.underline,

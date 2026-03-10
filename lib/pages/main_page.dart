@@ -1,4 +1,3 @@
-//main_page.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -6,7 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:translator/translator.dart';
+import 'package:flutter_tts/flutter_tts.dart'; // IMPORT TTS BARU
 
+import '../translations.dart';
 import 'login_page.dart';
 import 'profile_page.dart';
 import 'grid_page.dart';
@@ -29,8 +30,8 @@ class _MainPageState extends State<MainPage> {
     pages = [
       const PdfTranslatorPage(), 
       const LayoutDemoPage(),    
-      const GridDemoPage(),  
-      ProfilePage(username: widget.username),
+      const GridDemoPage(),      
+      ProfilePage(username: widget.username), 
     ];
   }
 
@@ -50,7 +51,7 @@ class _MainPageState extends State<MainPage> {
             ),
             ListTile(
               leading: const Icon(Icons.translate),
-              title: const Text('Terjemah PDF'),
+              title: Text(AppTranslations.tr('menu_translate')),
               onTap: () {
                 setState(() => currentIndex = 0);
                 Navigator.pop(context);
@@ -58,7 +59,7 @@ class _MainPageState extends State<MainPage> {
             ),
             ListTile(
               leading: const Icon(Icons.home),
-              title: const Text('Home'),
+              title: Text(AppTranslations.tr('menu_home')),
               onTap: () {
                 setState(() => currentIndex = 1);
                 Navigator.pop(context);
@@ -66,7 +67,7 @@ class _MainPageState extends State<MainPage> {
             ),
             ListTile(
               leading: const Icon(Icons.history),
-              title: const Text('Riwayat'),
+              title: Text(AppTranslations.tr('menu_history')),
               onTap: () {
                 setState(() => currentIndex = 2);
                 Navigator.pop(context);
@@ -74,7 +75,7 @@ class _MainPageState extends State<MainPage> {
             ),
             ListTile(
               leading: const Icon(Icons.person),
-              title: const Text('Profil'),
+              title: Text(AppTranslations.tr('menu_profile')),
               onTap: () {
                 setState(() => currentIndex = 3);
                 Navigator.pop(context);
@@ -83,7 +84,7 @@ class _MainPageState extends State<MainPage> {
             const Divider(),
             ListTile(
               leading: const Icon(Icons.logout),
-              title: const Text('Logout'),
+              title: Text(AppTranslations.tr('menu_logout')),
               onTap: () {
                 Navigator.pushReplacement(
                   context,
@@ -103,18 +104,20 @@ class _MainPageState extends State<MainPage> {
         onTap: (index) {
           setState(() => currentIndex = index);
         },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.translate), label: 'Terjemah'),
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Riwayat'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+        items: [
+          BottomNavigationBarItem(icon: const Icon(Icons.translate), label: AppTranslations.tr('menu_translate')),
+          BottomNavigationBarItem(icon: const Icon(Icons.home), label: AppTranslations.tr('menu_home')),
+          BottomNavigationBarItem(icon: const Icon(Icons.history), label: AppTranslations.tr('menu_history')),
+          BottomNavigationBarItem(icon: const Icon(Icons.person), label: AppTranslations.tr('menu_profile')),
         ],
       ),
     );
   }
 }
 
-
+// ===================================================================
+// KODE ASLI - TIDAK ADA YANG DIHAPUS (LayoutDemoPage)
+// ===================================================================
 class LayoutDemoPage extends StatelessWidget {
   const LayoutDemoPage({super.key});
 
@@ -231,6 +234,9 @@ class LayoutDemoPage extends StatelessWidget {
   }
 }
 
+// ===================================================================
+// KODE HALAMAN TRANSLATOR DENGAN TTS & I18N
+// ===================================================================
 class PdfTranslatorPage extends StatefulWidget {
   const PdfTranslatorPage({super.key});
 
@@ -239,14 +245,45 @@ class PdfTranslatorPage extends StatefulWidget {
 }
 
 class _PdfTranslatorPageState extends State<PdfTranslatorPage> {
-  String _translatedText = '';
-  bool _isLoading = false;
+  String _selectedSourceLanguage = 'en'; 
+  
+  final Map<String, String> _sourceLanguages = {
+    'en': 'Inggris',
+    'fr': 'Prancis',
+    'de': 'Jerman',
+  };
+
+  String _pdfTranslatedText = '';
+  bool _isPdfLoading = false;
+  
+  final TextEditingController _manualTextController = TextEditingController();
+  String _manualTranslatedText = '';
+  bool _isManualLoading = false;
+
   final GoogleTranslator _translator = GoogleTranslator();
+  
+  // Instance TTS Baru
+  final FlutterTts _flutterTts = FlutterTts();
+
+  @override
+  void dispose() {
+    _manualTextController.dispose();
+    _flutterTts.stop(); // Hentikan TTS ketika widget dihapus
+    super.dispose();
+  }
+
+  // Fungsi memanggil Text-to-Speech
+  Future<void> _speak(String text) async {
+    if (text.isNotEmpty) {
+      await _flutterTts.setLanguage("id-ID"); // Target bahasa tetap di set ID
+      await _flutterTts.speak(text);
+    }
+  }
 
   Future<void> _pickAndTranslatePdf() async {
     setState(() {
-      _isLoading = true;
-      _translatedText = 'Membaca dan menerjemahkan PDF...';
+      _isPdfLoading = true;
+      _pdfTranslatedText = AppTranslations.tr('pdf_loading');
     });
 
     try {
@@ -270,8 +307,8 @@ class _PdfTranslatorPageState extends State<PdfTranslatorPage> {
 
         if (bytes == null) {
           setState(() {
-            _translatedText = 'Gagal memuat file PDF.';
-            _isLoading = false;
+            _pdfTranslatedText = AppTranslations.tr('pdf_fail');
+            _isPdfLoading = false;
           });
           return;
         }
@@ -282,8 +319,8 @@ class _PdfTranslatorPageState extends State<PdfTranslatorPage> {
 
         if (extractedText.trim().isEmpty) {
           setState(() {
-            _translatedText = 'Tidak ada teks yang dapat diekstrak. Mungkin PDF ini berisi gambar hasil scan.';
-            _isLoading = false;
+            _pdfTranslatedText = AppTranslations.tr('pdf_no_text');
+            _isPdfLoading = false;
           });
           return;
         }
@@ -299,26 +336,78 @@ class _PdfTranslatorPageState extends State<PdfTranslatorPage> {
 
         var translation = await _translator.translate(
           textToTranslate, 
-          from: 'en', 
+          from: _selectedSourceLanguage,
           to: 'id'
         );
 
         setState(() {
-          _translatedText = translation.text;
+          _pdfTranslatedText = translation.text;
         });
       } else {
         setState(() {
-          _translatedText = '';
+          _pdfTranslatedText = '';
         });
       }
     } catch (e) {
       setState(() {
-        _translatedText = 'Terjadi kesalahan: $e';
+        _pdfTranslatedText = 'Terjadi kesalahan: $e';
       });
     } finally {
       setState(() {
-        _isLoading = false;
+        _isPdfLoading = false;
       });
+    }
+  }
+
+  Future<void> _translateManualText() async {
+    String textToTranslate = _manualTextController.text.trim();
+    
+    if (textToTranslate.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppTranslations.tr('txt_empty')))
+      );
+      return;
+    }
+
+    setState(() {
+      _isManualLoading = true;
+      _manualTranslatedText = AppTranslations.tr('manual_loading');
+    });
+
+    try {
+      if (textToTranslate.length > 4000) {
+        textToTranslate = textToTranslate.substring(0, 4000);
+      }
+
+      var translation = await _translator.translate(
+        textToTranslate, 
+        from: _selectedSourceLanguage, 
+        to: 'id' 
+      );
+
+      setState(() {
+        _manualTranslatedText = translation.text;
+      });
+    } catch (e) {
+      setState(() {
+        _manualTranslatedText = 'Terjadi kesalahan: $e';
+      });
+    } finally {
+      setState(() {
+        _isManualLoading = false;
+      });
+    }
+  }
+
+  void _copyToClipboard(String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppTranslations.tr('copy_success')),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -326,77 +415,206 @@ class _PdfTranslatorPageState extends State<PdfTranslatorPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Penerjemah PDF'),
+        title: Text(AppTranslations.tr('title_translator')),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    AppTranslations.tr('trans_from'),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedSourceLanguage,
+                      icon: const Icon(Icons.arrow_drop_down, color: Colors.blue),
+                      style: const TextStyle(
+                        fontSize: 16, 
+                        color: Colors.blue, 
+                        fontWeight: FontWeight.bold
+                      ),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _selectedSourceLanguage = newValue;
+                          });
+                        }
+                      },
+                      items: _sourceLanguages.entries
+                          .map<DropdownMenuItem<String>>((entry) {
+                        return DropdownMenuItem<String>(
+                          value: entry.key,
+                          child: Text(entry.value),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            Text(
+              AppTranslations.tr('trans_doc'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
             ElevatedButton.icon(
-              onPressed: _isLoading ? null : _pickAndTranslatePdf,
+              onPressed: _isPdfLoading ? null : _pickAndTranslatePdf,
               icon: const Icon(Icons.picture_as_pdf),
-              label: const Text('Pilih File PDF Bahasa Inggris'),
+              label: Text(AppTranslations.tr('btn_pick_pdf')), 
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),
-            const SizedBox(height: 20),
-            
+            const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Hasil Terjemahan ke Indonesia:',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    AppTranslations.tr('result_id'),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.copy, color: Colors.blue),
-                  tooltip: 'Salin Teks',
-                  onPressed: _translatedText.isNotEmpty && !_isLoading
-                      ? () async {
-                          await Clipboard.setData(
-                            ClipboardData(text: _translatedText)
-                          );
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Teks berhasil disalin!'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        }
-                      : null,
+                // FITUR TTS PLAY BUTTON
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.volume_up, color: Colors.blue, size: 24),
+                      tooltip: 'Bicara (TTS)',
+                      onPressed: _pdfTranslatedText.isNotEmpty && !_isPdfLoading
+                          ? () => _speak(_pdfTranslatedText)
+                          : null,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy, color: Colors.blue, size: 20),
+                      tooltip: 'Salin Teks PDF',
+                      onPressed: _pdfTranslatedText.isNotEmpty && !_isPdfLoading
+                          ? () => _copyToClipboard(_pdfTranslatedText)
+                          : null,
+                    ),
+                  ],
                 ),
               ],
             ),
-            
-            const SizedBox(height: 5),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.grey.shade50,
-                ),
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : SingleChildScrollView(
-                        child: Text(
-                          _translatedText.isEmpty
-                              ? 'Teks hasil terjemahan akan muncul di sini.'
-                              : _translatedText,
-                          style: const TextStyle(fontSize: 16, height: 1.5),
-                        ),
+            Container(
+              height: 200, 
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.white,
+              ),
+              child: _isPdfLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : SingleChildScrollView(
+                      child: Text(
+                        _pdfTranslatedText.isEmpty
+                            ? AppTranslations.tr('res_pdf_empty')
+                            : _pdfTranslatedText,
+                        style: const TextStyle(fontSize: 16, height: 1.5),
                       ),
+                    ),
+            ),
+
+            const SizedBox(height: 30),
+            const Divider(thickness: 2),
+            const SizedBox(height: 20),
+
+            Text(
+              AppTranslations.tr('trans_manual'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _manualTextController,
+              maxLines: 4,
+              decoration: InputDecoration(
+                hintText: AppTranslations.tr('hint_manual'), 
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                filled: true,
+                fillColor: Colors.white,
               ),
             ),
+            const SizedBox(height: 10),
+            ElevatedButton.icon(
+              onPressed: _isManualLoading ? null : _translateManualText,
+              icon: const Icon(Icons.g_translate),
+              label: Text(AppTranslations.tr('btn_trans_text')),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    AppTranslations.tr('result_id'),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                // FITUR TTS PLAY BUTTON MANUAL
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.volume_up, color: Colors.green, size: 24),
+                      tooltip: 'Bicara (TTS)',
+                      onPressed: _manualTranslatedText.isNotEmpty && !_isManualLoading
+                          ? () => _speak(_manualTranslatedText)
+                          : null,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy, color: Colors.green, size: 20),
+                      tooltip: 'Salin Teks Manual',
+                      onPressed: _manualTranslatedText.isNotEmpty && !_isManualLoading
+                          ? () => _copyToClipboard(_manualTranslatedText)
+                          : null,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            Container(
+              height: 150,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.white,
+              ),
+              child: _isManualLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : SingleChildScrollView(
+                      child: Text(
+                        _manualTranslatedText.isEmpty
+                            ? AppTranslations.tr('res_manual_empty')
+                            : _manualTranslatedText,
+                        style: const TextStyle(fontSize: 16, height: 1.5),
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 20), 
           ],
         ),
       ),
