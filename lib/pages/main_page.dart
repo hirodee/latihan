@@ -31,7 +31,7 @@ class _MainPageState extends State<MainPage> {
       const PdfTranslatorPage(), 
       const LayoutDemoPage(),    
       const GridDemoPage(),      
-      ProfilePage(username: widget.username), 
+      WeatherPage(username: widget.username), 
     ];
   }
 
