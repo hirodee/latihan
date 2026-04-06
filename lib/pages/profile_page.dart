@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'login_page.dart';
 
 class WeatherPage extends StatefulWidget {
@@ -15,18 +17,26 @@ class _WeatherPageState extends State<WeatherPage> {
   bool isLoading = true;
   String errorMessage = '';
   Map<String, dynamic>? weatherData;
+  
+  // Koordinat default (Wonosobo)
+  LatLng currentLatLng = const LatLng(-7.3633, 109.9003);
+  final MapController _mapController = MapController();
 
   @override
   void initState() {
     super.initState();
-    fetchWeatherData();
+    fetchWeatherData(currentLatLng.latitude, currentLatLng.longitude);
   }
 
-  Future<void> fetchWeatherData() async {
+  Future<void> fetchWeatherData(double lat, double lon) async {
+    setState(() {
+      isLoading = true;
+      errorMessage = '';
+    });
+
     try {
-      // Menambahkan parameter 'daily' untuk mengambil prediksi cuaca 7 hari ke depan
       final url = Uri.parse(
-          'https://api.open-meteo.com/v1/forecast?latitude=-6.2088&longitude=106.8456&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Asia%2FJakarta');
+          'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Asia%2FJakarta');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -36,19 +46,18 @@ class _WeatherPageState extends State<WeatherPage> {
         });
       } else {
         setState(() {
-          errorMessage = 'Gagal mengambil data cuaca dari server.';
+          errorMessage = 'Gagal mengambil data cuaca.';
           isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        errorMessage = 'Terjadi kesalahan jaringan: $e';
+        errorMessage = 'Kesalahan jaringan: $e';
         isLoading = false;
       });
     }
   }
 
-  // Fungsi untuk menerjemahkan kode cuaca menjadi teks (Sudah Dilengkapi)
   String getWeatherDescription(int code) {
     switch (code) {
       case 0: return 'Cerah';
@@ -56,294 +65,299 @@ class _WeatherPageState extends State<WeatherPage> {
       case 3: return 'Mendung';
       case 45: case 48: return 'Berkabut';
       case 51: case 53: case 55: return 'Gerimis';
-      case 56: case 57: return 'Gerimis Dingin';
       case 61: case 63: case 65: return 'Hujan';
-      case 66: case 67: return 'Hujan Dingin';
-      case 71: case 73: case 75: case 77: return 'Bersalju';
-      case 80: case 81: case 82: return 'Hujan Deras'; // Sering terjadi di Jakarta
-      case 85: case 86: return 'Hujan Salju';
-      case 95: case 96: case 99: return 'Badai Petir'; // Sering terjadi di Jakarta
-      default: return 'Lainnya ($code)';
+      case 80: case 81: case 82: return 'Hujan Deras';
+      case 95: case 96: case 99: return 'Badai Petir';
+      default: return 'Lainnya';
     }
   }
 
-  // Fungsi untuk menerjemahkan kode cuaca menjadi Icon (Sudah Dilengkapi)
   IconData getWeatherIcon(int code) {
     switch (code) {
-      case 0: return Icons.wb_sunny;
-      case 1: case 2: return Icons.cloud_queue; // Icon awan cerah
-      case 3: return Icons.cloud; // Icon awan mendung
-      case 45: case 48: return Icons.foggy;
-      case 51: case 53: case 55: return Icons.grain; // Icon rintik gerimis
-      case 56: case 57: return Icons.ac_unit;
-      case 61: case 63: case 65: return Icons.water_drop;
-      case 66: case 67: return Icons.ac_unit;
-      case 71: case 73: case 75: case 77: return Icons.ac_unit;
-      case 80: case 81: case 82: return Icons.thunderstorm; // Icon hujan deras/badai
-      case 85: case 86: return Icons.ac_unit;
-      case 95: case 96: case 99: return Icons.flash_on; // Icon petir
-      default: return Icons.help_outline;
+      case 0: return Icons.wb_sunny_rounded;
+      case 1: case 2: return Icons.wb_cloudy_rounded;
+      case 3: return Icons.cloud_rounded;
+      case 45: case 48: return Icons.blur_on_rounded;
+      case 51: case 53: case 55: return Icons.grain_rounded;
+      case 61: case 63: case 65: return Icons.umbrella_rounded;
+      case 80: case 81: case 82: return Icons.tsunami_rounded;
+      case 95: case 96: case 99: return Icons.flash_on_rounded;
+      default: return Icons.help_outline_rounded;
     }
   }
 
-  // Fungsi untuk mendapatkan nama hari dari format tanggal API (YYYY-MM-DD)
   String getDayName(String dateString) {
     DateTime date = DateTime.parse(dateString);
-    List<String> days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-    return days[date.weekday - 1];
+    return ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'][date.weekday - 1];
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Menggunakan extendBodyBehindAppBar agar gradient background menyatu dengan AppBar
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Cuaca Jakarta', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Weather Explorer', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.my_location),
+            onPressed: () {
+              _mapController.move(currentLatLng, 13.0);
+            },
+          )
+        ],
       ),
       body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        // Menambahkan Gradient Background agar terlihat modern
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.blue.shade800, Colors.lightBlue.shade200],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.indigo.shade900, Colors.blue.shade600, Colors.lightBlue.shade300],
           ),
         ),
-        child: SafeArea(
-          child: isLoading
-              ? const Center(child: CircularProgressIndicator(color: Colors.white))
-              : errorMessage.isNotEmpty
-                  ? Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(16.0),
-                        margin: const EdgeInsets.symmetric(horizontal: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.8),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          errorMessage,
-                          style: const TextStyle(color: Colors.red, fontSize: 16),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    )
-                  : SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // Mempertahankan Username
-                            Text(
-                              'Halo, ${widget.username}!',
-                              style: const TextStyle(fontSize: 18, color: Colors.white70),
-                            ),
-                            const SizedBox(height: 20),
-                            
-                            // INFO LOKASI
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(Icons.location_on, size: 28, color: Colors.white),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Jakarta, Indonesia',
-                                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 30),
-                            
-                            // CARD CUACA SAAT INI
-                            if (weatherData != null && weatherData!['current'] != null)
-                              Container(
-                                padding: const EdgeInsets.all(24),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(color: Colors.white.withOpacity(0.3)),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 10,
-                                      spreadRadius: 2,
-                                    )
-                                  ],
-                                ),
-                                child: Column(
-                                  children: [
-                                    Icon(
-                                      getWeatherIcon(weatherData!['current']['weather_code']),
-                                      size: 80,
-                                      color: Colors.white,
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Text(
-                                      '${weatherData!['current']['temperature_2m']}°C',
-                                      style: const TextStyle(fontSize: 64, fontWeight: FontWeight.bold, color: Colors.white),
-                                    ),
-                                    Text(
-                                      getWeatherDescription(weatherData!['current']['weather_code']),
-                                      style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w500),
-                                    ),
-                                    const SizedBox(height: 20),
-                                    const Divider(color: Colors.white54),
-                                    const SizedBox(height: 15),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                      children: [
-                                        _buildWeatherDetail(
-                                          Icons.water_drop, 
-                                          'Kelembapan', 
-                                          '${weatherData!['current']['relative_humidity_2m']}%'
-                                        ),
-                                        _buildWeatherDetail(
-                                          Icons.air, 
-                                          'Angin', 
-                                          '${weatherData!['current']['wind_speed_10m']} km/h'
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            
-                            const SizedBox(height: 40),
+        child: Column(
+          children: [
+            const SizedBox(height: kToolbarHeight + 30),
+            
+            // MAP SECTION DENGAN CARD STYLE
+            _buildMapSection(),
 
-                            // SECTION PREDIKSI 7 HARI KE DEPAN
-                            if (weatherData != null && weatherData!['daily'] != null) ...[
-                              const Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  'Prediksi 7 Hari Ke Depan',
-                                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-                                ),
-                              ),
-                              const SizedBox(height: 15),
-                              SizedBox(
-                                height: 160,
-                                child: ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  physics: const BouncingScrollPhysics(),
-                                  itemCount: weatherData!['daily']['time'].length,
-                                  itemBuilder: (context, index) {
-                                    return _buildDailyForecastCard(
-                                      date: weatherData!['daily']['time'][index],
-                                      weatherCode: weatherData!['daily']['weather_code'][index],
-                                      maxTemp: weatherData!['daily']['temperature_2m_max'][index],
-                                      minTemp: weatherData!['daily']['temperature_2m_min'][index],
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-
-                            const SizedBox(height: 40),
-                            
-                            // Mempertahankan fitur tombol Logout dari code sebelumnya
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                icon: const Icon(Icons.logout),
-                                onPressed: () {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const LoginPage(),
-                                    ),
-                                  );
-                                },
-                                label: const Text('Logout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  backgroundColor: Colors.redAccent,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  elevation: 5,
-                                ),
-                              ),
-                            )
-                          ],
-                        ),
-                      ),
-                    ),
+            // WEATHER DATA SECTION
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(top: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                ),
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    : _buildWeatherContent(),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // Widget helper untuk detail cuaca (Kelembapan & Angin)
-  Widget _buildWeatherDetail(IconData icon, String label, String value) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.white70, size: 28),
-        const SizedBox(height: 5),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
-
-  // Widget helper untuk card prediksi harian
-  Widget _buildDailyForecastCard({
-    required String date,
-    required int weatherCode,
-    required double maxTemp,
-    required double minTemp,
-  }) {
+  Widget _buildMapSection() {
     return Container(
-      width: 110,
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.all(12),
+      height: MediaQuery.of(context).size.height * 0.35,
+      margin: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
+        ],
       ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(25),
+        child: FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(
+            initialCenter: currentLatLng,
+            initialZoom: 11.0,
+            onTap: (tapPosition, latLng) {
+              setState(() => currentLatLng = latLng);
+              fetchWeatherData(latLng.latitude, latLng.longitude);
+            },
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', // Theme map lebih berwarna
+              userAgentPackageName: 'com.example.app',
+            ),
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: currentLatLng,
+                  width: 60,
+                  height: 60,
+                  child: TweenAnimationBuilder(
+                    tween: Tween<double>(begin: 0, end: 1),
+                    duration: const Duration(milliseconds: 500),
+                    builder: (context, double value, child) {
+                      return Transform.scale(
+                        scale: value,
+                        child: const Icon(Icons.location_pin, color: Colors.redAccent, size: 50),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeatherContent() {
+    if (errorMessage.isNotEmpty) {
+      return Center(child: Text(errorMessage, style: const TextStyle(color: Colors.white)));
+    }
+
+    final current = weatherData!['current'];
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            getDayName(date),
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            date.substring(5), // Mengambil MM-DD saja
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
-          ),
-          const SizedBox(height: 10),
-          Icon(
-            getWeatherIcon(weatherCode),
-            color: Colors.white,
-            size: 32,
-          ),
-          const SizedBox(height: 10),
+          // Header Info
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${maxTemp.round()}°',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Lokasi Terpilih", style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  Text(
+                    "${currentLatLng.latitude.toStringAsFixed(2)}, ${currentLatLng.longitude.toStringAsFixed(2)}",
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ],
               ),
-              const SizedBox(width: 4),
-              Text(
-                '${minTemp.round()}°',
-                style: const TextStyle(color: Colors.white54, fontSize: 14),
-              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(20)),
+                child: const Text("Live", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              )
             ],
           ),
+          const SizedBox(height: 30),
+
+          // Main Temp Card
+          _buildGlassCard(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Icon(getWeatherIcon(current['weather_code']), size: 80, color: Colors.white),
+                Column(
+                  children: [
+                    Text(
+                      '${current['temperature_2m'].round()}°',
+                      style: const TextStyle(fontSize: 72, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    Text(
+                      getWeatherDescription(current['weather_code']),
+                      style: const TextStyle(fontSize: 18, color: Colors.white70, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 25),
+
+          // Details Row
+          Row(
+            children: [
+              Expanded(child: _buildDetailItem(Icons.water_drop_outlined, "Humidity", "${current['relative_humidity_2m']}%")),
+              const SizedBox(width: 15),
+              Expanded(child: _buildDetailItem(Icons.air_rounded, "Wind", "${current['wind_speed_10m']} km/h")),
+            ],
+          ),
+          const SizedBox(height: 30),
+
+          // Forecast
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text("7-Day Forecast", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(height: 15),
+          _buildForecastList(),
+          
+          const SizedBox(height: 30),
+          _buildLogoutButton(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGlassCard({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildDetailItem(IconData icon, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.white70),
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildForecastList() {
+    final daily = weatherData!['daily'];
+    return SizedBox(
+      height: 120,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: daily['time'].length,
+        itemBuilder: (context, index) {
+          return Container(
+            width: 85,
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: index == 0 ? Colors.white24 : Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(getDayName(daily['time'][index]), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Icon(getWeatherIcon(daily['weather_code'][index]), color: Colors.white, size: 28),
+                const SizedBox(height: 8),
+                Text('${daily['temperature_2m_max'][index].round()}°', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        boxShadow: [BoxShadow(color: Colors.redAccent.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+      ),
+      child: ElevatedButton(
+        onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage())),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.redAccent,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 0,
+        ),
+        child: const Text("LOGOUT SESSION", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1)),
       ),
     );
   }
